@@ -3,19 +3,18 @@ package main
 import (
 	"context"
 	"errors"
-	"io/ioutil"
 	"time"
 
 	//"flag"
-	"encoding/json"
-	"fmt"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
+	"fmt"
 
 	"strings"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/smithy-go"
 )
 
@@ -78,28 +77,38 @@ func init() {
 }
 func main() {
 
-	//instances := []string{"i-0a5bf51ec06246d81"}
-
 	for {
-		content, err := ioutil.ReadFile("./config.json")
+
+		var instanceIds = make([]string, 0)
+		input1 := &ec2.DescribeInstancesInput{
+			Filters: []types.Filter{
+				{
+					Name: aws.String("tag:POC"),
+					Values: []string{
+						"GolangOperator",
+					},
+				},
+			},
+		}
+
+		result, err := client.DescribeInstances(context.TODO(), input1)
 		if err != nil {
-			fmt.Println("Error when opening file: ", err)
+			fmt.Println("Got an error fetching the status of the instance")
+			fmt.Println(err)
 		} else {
-			// Now let's unmarshall the data into `payload`
-			var payload map[string]interface{}
-			err = json.Unmarshal(content, &payload)
-			if err != nil {
-				fmt.Println("Error during Unmarshal(): ", err)
+
+			fmt.Println(result)
+			for _, r := range result.Reservations {
+				fmt.Println("Reservation ID: " + *r.ReservationId)
+				fmt.Println("Instance IDs:")
+				for _, i := range r.Instances {
+					fmt.Println("   " + *i.InstanceId)
+					//value := *i.InstanceId
+					instanceIds = append(instanceIds, *i.InstanceId)
+				}
+
+				fmt.Println(instanceIds)
 			}
-			fmt.Println(payload, len(payload))
-			//var instances = make([]string, len(payload)-1)
-			var instanceIds = make([]string, 0)
-			// Print elements in map on the terminal the key and its value
-			for key, value := range payload {
-				fmt.Printf(" %s : %v \n", key, value)
-				instanceIds = append(instanceIds, value.(string))
-			}
-			fmt.Println("slice", instanceIds)
 
 			input := &ec2.DescribeInstanceStatusInput{
 				InstanceIds:         instanceIds,
@@ -120,10 +129,10 @@ func main() {
 					fmt.Println("+++++++++++++++++++++++++++++++++++++++++")
 					fmt.Println("status check loop\n")
 					fmt.Println(*instanceStatus.InstanceId, instanceStatus.InstanceState.Name)
-					for key, value := range payload {
+					for key, value := range instanceIds {
 						if *instanceStatus.InstanceId == value {
 							fmt.Println("instance is found in config file")
-							fmt.Printf(" %s : %v \n", key, value)
+							fmt.Printf(" %v : %v \n", key, value)
 							if instanceStatus.InstanceState.Name == "running" {
 								fmt.Println("instance is running\n")
 							} else {
@@ -135,17 +144,7 @@ func main() {
 				} //instance id check ends
 			} //aws-sdk call ends
 			fmt.Println("+++++++++++++++++++++++++++++++++++++++++")
-			jsonData, err := json.MarshalIndent(payload, "", " ")
-			if err != nil {
-				fmt.Println("could not convert struct data into json file: %v", err)
-
-			}
-			//Save Json Data  into a json file
-			if err = ioutil.WriteFile("./config.json", jsonData, 0644); err != nil {
-				fmt.Println("could not saveJSON file: %v", err)
-
-			}
-		} //file exists
+		} //instance exists
 		time.Sleep(60 * time.Second)
 
 	} //for loop ends

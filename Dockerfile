@@ -10,6 +10,14 @@ LABEL name="aws-vmstate" \
     description="This service enables state management AWS cloud vms."
 
 # copy code to the build path
+USER root
+WORKDIR /opt
+RUN chgrp -R 0 /opt && \
+    chmod -R g=u /opt && \
+    chmod +x -R /opt
+
+USER 1001
+
 COPY go.* ./
 COPY aws-vmstate.go .
 
@@ -17,4 +25,6 @@ RUN go mod download
 
 RUN go build -o aws-vmstate
 
-CMD ["bash","-c","./aws-vmstate "]
+#RUN chmod +x /opt/aws-vmstate
+
+CMD ["bash","-c","/opt/aws-vmstate "]
