@@ -143,7 +143,7 @@ func main() {
 					} //key search ends
 				} //instance id check ends
 			} //aws-sdk call ends
-			fmt.Println("+++++++++++++++++++++++++++++++++++++++++")
+			fmt.Println("++++++++++++++++++++++++++++++++++++++++++++++++++")
 		} //instance exists
 		time.Sleep(60 * time.Second)
 
